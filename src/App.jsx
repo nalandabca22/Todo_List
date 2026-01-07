@@ -1,106 +1,167 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { FaEdit } from "react-icons/fa";
 import { MdDelete } from "react-icons/md";
-import './App.css'
 import { v4 as uuidv4 } from 'uuid';
-
+import './App.css'
 
 function App() {
   const [todo, setTodo] = useState("")
   const [todos, setTodos] = useState([])
-  const [showFinished, setshowFinished] = useState(true)
+  const [showFinished, setShowFinished] = useState(false)
+
+  const isFirstRender = useRef(true);
 
   useEffect(() => {
-    let todoString = localStorage.getItem("todos")
-    if (todoString) {
-      let todos = JSON.parse(localStorage.getItem("todos"))
-      setTodos(todos)
+    const savedTodos = JSON.parse(localStorage.getItem("todos"));
+    if (savedTodos && savedTodos.length > 0) {
+      setTodos(savedTodos);
     }
   }, [])
 
-  const toggleFinished = (params) => {
-    setshowFinished(!showFinished)
-  }
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    localStorage.setItem("todos", JSON.stringify(todos));
+  }, [todos]);
 
   const handleAdd = () => {
-    setTodos([...todos, { id: uuidv4(), todo, isCompleted: false }])
-    setTodo("")
-  }
+    if (!todo.trim()) return;
+    setTodos([
+      ...todos,
+      { id: uuidv4(), todo: todo.trim(), isCompleted: false }
+    ]);
+    setTodo("");
+  };
 
   const handleEnter = (e) => {
-
-    if (e.key === "Enter" && todo !== "") {
-      handleAdd();
-    }
-  }
+    if (e.key === "Enter") handleAdd();
+  };
 
   const handleChange = (e) => {
-    setTodo(e.target.value)
-  }
+    setTodo(e.target.value);
+    console.log(e.target.value)
+  };
 
   const handleCheckbox = (e) => {
-    let id = e.target.name;
-    let index = todos.findIndex(item => {
-      return item.id === id;
-    })
-    let newTodos = [...todos];
-    newTodos[index].isCompleted = !newTodos[index].isCompleted;
-    setTodos(newTodos);
-  }
+    const id = e.target.name;
+    setTodos(
+      todos.map(item =>
+        item.id === id ? { ...item, isCompleted: !item.isCompleted } : item
+      )
+    );
+  };
 
-  const handleEdit = (e, id) => {
-    let t = todos.filter(i => i.id === id)
-    setTodo(t[0].todo)
-    let newTodos = todos.filter(item => {
-      return item.id !== id;
-    })
-    setTodos(newTodos)
-  }
-  const handleDelete = (e, id) => {
-      let newTodos = todos.filter(item => {        
-        return item.id !== id;
-      })      
-      setTodos(newTodos)
-  }
+  const handleEdit = (id) => {
+    const t = todos.find(item => item.id === id);
+    setTodo(t.todo);
+    setTodos(todos.filter(item => item.id !== id));
+  };
+
+  const handleDelete = (id) => {
+    let val = confirm("Are u sure, You want to delete this Task");
+    if (val) {
+      setTodos(todos.filter(item => item.id !== id));
+    }
+  };
+  
+  const toggleFinished = () => {
+    setShowFinished(!showFinished);
+  };
 
   return (
-    <>
-      <div className=" bg-gray-600 w-full min-h-screen flex justify-center">
-        <div className="md:w-2/5 min-h-2/3 border-2 my-20 rounded-md p-2 bg-blue-200">
-          <h1 className='font-bold text-2xl text-center'>iTask - Manage your todos at one place</h1>
-          <h2 className='font-bold'>Add a Todo</h2>
-          <div className="flex gap-2">
-            <input onChange={handleChange} onKeyDown={handleEnter} value={todo} type="text" className='border-2 rounded-sm w-full p-1 px-0.5 outline-0' />
-            <button className='border-2 rounded-sm p-0.5 px-2 cursor-pointer bg-blue-300  hover:bg-blue-500' onClick={handleAdd} disabled={todo.length <= 1} >Save</button>
-          </div>
-          <div className='bg-black w-11/12 mx-auto opacity-25 mt-2'></div>
-          <div className='flex justify-between'>
-            <h2 className='font-bold'>Your Todos</h2>
-            <div className='flex gap-1'>
-              <input onChange={toggleFinished} type="checkbox" checked={showFinished} />
-              <span className='font-bold'>Show Finished</span>
-            </div>
-          </div>
-          <div className='flex flex-col gap-1'>
-            {todos.length === 0 && <div className='text-center font-bold'>Todo list empty.</div>}
-            {todos.map(item => {
+    <div className="bg-gray-600 w-full h-screen flex justify-center">
+      <div className="max-lg:w-10/10 lg:w-6/10 border-2 my-20 max-lg:mx-10 rounded-2xl p-3 bg-blue-200 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:w-0">
 
-              return (showFinished || !item.isCompleted) && <div key={item.id} className='flex gap-1 justify-between items-center border-2 p-1 rounded-sm bg-cyan-200'>
-                <div className='flex gap-1'>
-                  <input onChange={handleCheckbox} type="checkbox" checked={item.isCompleted} name={item.id} id="" className='' />
-                  <div className={item.isCompleted ? "line-through" : ""}>{item.todo}</div>
-                </div>
-                <div className='flex gap-1 justify-center h-min'>
-                  <button onClick={(e) => handleEdit(e, item.id)} className='border-2 rounded-sm p-0.5 px-2 cursor-pointer bg-green-100 hover:bg-green-300'><FaEdit /></button>
-                  <button onClick={(e) => handleDelete(e, item.id)} className='border-2 rounded-sm p-0.5 px-2 cursor-pointer bg-red-100 hover:bg-red-500'><MdDelete /></button>
-                </div>
-              </div>
-            })}
+        <h1 className="font-bold text-2xl text-center">
+          iTask - Manage your todos
+        </h1>
+
+        <h2 className="font-bold mt-2">Add a Todo</h2>
+
+        <div className="flex gap-2">
+          <input
+            value={todo}
+            onChange={handleChange}
+            onKeyDown={handleEnter}
+            type="text"
+            className="border-2 rounded-sm w-full p-1 outline-0"
+          />
+          <button
+            onClick={handleAdd}
+            disabled={todo.length <= 1}
+            className="border-2 rounded-sm px-3 bg-blue-300 hover:bg-blue-500 disabled:opacity-50 cursor-pointer"
+          >
+            Save
+          </button>
+        </div>
+
+        <div className="bg-black w-11/12 mx-auto opacity-25 mt-3"></div>
+
+        <div className="flex justify-between mt-2">
+          <h2 className="font-bold">Your Todos</h2>
+          <div className="flex gap-1 items-center">
+            <input
+              type="checkbox"
+              checked={showFinished}
+              onChange={toggleFinished}
+            />
+            <span className="font-bold">
+              {showFinished ? "Show Completed" : "Show Pending"}
+            </span>
           </div>
         </div>
+
+        <div className="flex flex-col gap-2 mt-2">
+
+          {todos.filter(item => item.isCompleted === showFinished).length === 0 && (
+            <div className="text-center font-bold">
+              No todos found.
+            </div>
+          )}
+
+          {todos
+            .filter(item => item.isCompleted === showFinished)
+            .map(item => (
+              <div
+                key={item.id}
+                className="flex justify-between items-center border-2 p-1 rounded-sm bg-cyan-200"
+              >
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="checkbox"
+                    checked={item.isCompleted}
+                    name={item.id}
+                    onChange={handleCheckbox}
+                    className='cursor-pointer'
+                  />
+                  <div className={item.isCompleted ? "line-through" : ""}>
+                    {item.todo}
+                  </div>
+                </div>
+
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => handleEdit(item.id)}
+                    className="border-2 rounded-sm px-2 py-1 bg-green-100 hover:bg-blue-400 cursor-pointer"
+                  >
+                    <FaEdit />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(item.id)}
+                    className="border-2 rounded-sm px-2 py-1 bg-red-100 hover:bg-red-500 cursor-pointer"
+                  >
+                    <MdDelete />
+                  </button>
+                </div>
+              </div>
+            ))
+          }
+        </div>
       </div>
-    </>
-  )
+    </div>
+  );
 }
 
 export default App
